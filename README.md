@@ -67,9 +67,9 @@ the R503 - R 502 sensor stores the fingerprint image and associates it with an i
 in the saver project it is used to store the user name and associate it with the reader id.
 
 
-copy the script code in your script-file or in your script section
+copy the [script](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/home_assistant) code in your script-file or in your script section
 
-copy the script code in your script-file or in your script section
+copy the [sensor](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/home_assistant) code in your script-file or in your script section
 
 ## OR
 
@@ -77,10 +77,10 @@ copy fingerprints_package.yaml in your package folder
 
 ## Lovelace
 
-copy lovelace code in your config
+copy [lovelace](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/home_assistant) code in your config
  
  
-this project is totally inspired by HOME [EVERYTHING SMART](https://everythingsmarthome.co.uk/howto/how-to-build-a-wifi-connected-fingerprint-sensor-with-home-assistant/)
+## this project is totally inspired by HOME [EVERYTHING SMART](https://everythingsmarthome.co.uk/howto/how-to-build-a-wifi-connected-fingerprint-sensor-with-home-assistant/)
  
 <a href="https://www.buymeacoffee.com/madmicio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
 
