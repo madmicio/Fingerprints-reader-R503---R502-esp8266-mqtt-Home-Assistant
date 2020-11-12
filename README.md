@@ -79,5 +79,8 @@ copy fingerprints_package.yaml in your package folder
 
 copy lovelace code in your config
  
+ 
+this project is totally inspired by HOME [EVERYTHING SMART](https://everythingsmarthome.co.uk/howto/how-to-build-a-wifi-connected-fingerprint-sensor-with-home-assistant/)
+ 
 <a href="https://www.buymeacoffee.com/madmicio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
 
