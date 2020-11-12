@@ -80,7 +80,7 @@ copy [fingerprints_package.yaml](https://github.com/madmicio/Fingerprints-reader
 copy [lovelace](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/home_assistant) code in your config
  
  
-## this project is totally inspired by HOME [EVERYTHING SMART](https://everythingsmarthome.co.uk/howto/how-to-build-a-wifi-connected-fingerprint-sensor-with-home-assistant/)
+## this project is totally inspired by [EVERYTHING SMART HOME ](https://everythingsmarthome.co.uk/howto/how-to-build-a-wifi-connected-fingerprint-sensor-with-home-assistant/)
  
 <a href="https://www.buymeacoffee.com/madmicio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
 
