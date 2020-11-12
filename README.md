@@ -44,8 +44,8 @@ R502 connection pin:
 
 
 ## GUIDE
-Install the necessary libraries,
-download the sketch and open it with ide arduino.
+Install the necessary [libraries](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/libraries/Adafruit_Fingerprint_Sensor_Library),
+download the [sketch](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/sketch/fingerprints-mqtt) and open it with ide arduino.
 
 select your board, edit the file with wifi and mqtt credentials
 
@@ -73,7 +73,7 @@ copy the [sensor](https://github.com/madmicio/Fingerprints-reader-R503---R502-es
 
 ## OR
 
-copy fingerprints_package.yaml in your package folder
+copy [fingerprints_package.yaml](https://github.com/madmicio/Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant/tree/main/home_assistant) in your package folder
 
 ## Lovelace
 
