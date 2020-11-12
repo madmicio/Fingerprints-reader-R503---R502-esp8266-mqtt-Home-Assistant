@@ -1,3 +1,6 @@
+
+[![buymeacoffee_badge](https://img.shields.io/badge/Donate-buymeacoffe-ff813f?style=flat)](https://www.buymeacoffee.com/madmicio)
+
 # Fingerprints-reader-R503---R502-esp8266-mqtt-Home-Assistant
 
 
@@ -76,4 +79,5 @@ copy fingerprints_package.yaml in your package folder
 
 copy lovelace code in your config
  
+<a href="https://www.buymeacoffee.com/madmicio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
 
