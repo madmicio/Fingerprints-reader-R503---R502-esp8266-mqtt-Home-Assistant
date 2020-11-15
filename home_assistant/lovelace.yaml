@@ -23,7 +23,6 @@
                   card:
                     - height: 70px
                     - width: 150px
-                    - background-color: var(--deactive-background-button-color)  
                   name:
                     - font-size: 26px
               - type: 'custom:button-card'
@@ -36,7 +35,6 @@
                 styles:
                   card:
                     - height: 70px
-                    - background-color: var(--deactive-background-button-color) 
           - type: 'custom:gap-card'
             height: 8
           - type: 'custom:button-card'
@@ -87,7 +85,6 @@
               - operator: default
                 styles:
                   card:
-                    - background-color: var(--deactive-background-button-color) 
                   state:
                     - animation: blink 2s ease infinite
           - type: 'custom:gap-card'
@@ -133,7 +130,6 @@
                                 styles:
                                   card:
                                     - height: 60px
-                                    - background-color: var(--deactive-background-button-color)
                                     - width: 60px
                               - type: markdown
                                 content: >
@@ -149,7 +145,6 @@
                                 styles:
                                   card:
                                     - height: 60px
-                                    - background-color: var(--deactive-background-button-color)
                                     - width: 60px
                           - entities:
                               - entity: input_text.id_name
@@ -221,7 +216,6 @@
                                 styles:
                                   card:
                                     - height: 60px
-                                    - background-color: var(--deactive-background-button-color)
                                     - width: 60px
                               - type: markdown
                                 content: >
@@ -237,7 +231,6 @@
                                 styles:
                                   card:
                                     - height: 60px
-                                    - background-color: var(--deactive-background-button-color)
                                     - width: 60px
                           - type: horizontal-stack
                             cards:
@@ -303,7 +296,6 @@
                                 styles:
                                   card:
                                     - height: 60px
-                                    - background-color: var(--deactive-background-button-color)
                                     - width: 60px
                               - type: markdown
                                 content: >
@@ -319,7 +311,6 @@
                                 styles:
                                   card:
                                     - height: 60px
-                                    - background-color: var(--deactive-background-button-color)
                                     - width: 60px
                           - entities:
                               - entity: input_text.id_name
