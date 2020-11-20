@@ -99,3 +99,10 @@ fingerprint_rename:
         {% elif is_state('sensor.fingerprint', 'Deleted') %}
           mdi:trash-can-outline
         {% endif %}
+###############################################################################
+#                               input_text
+###############################################################################  
+input_text:
+  id_name:
+    name: name id
+    initial: user name
