@@ -106,3 +106,13 @@ input_text:
   id_name:
     name: name id
     initial: user name
+###############################################################################
+#                               input_number
+###############################################################################  
+input_number:
+  fingerprint_learning_id:
+    name: numero impronta
+    initial: 0
+    min: 0
+    max: 127
+    step: 1
