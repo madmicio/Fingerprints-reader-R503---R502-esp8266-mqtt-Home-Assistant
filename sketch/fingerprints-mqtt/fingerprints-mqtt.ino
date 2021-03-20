@@ -1,16 +1,16 @@
 /*************************************
- * https://everythingsmarthome.co.uk
- * 
- * This is an MQTT connected fingerprint sensor which can 
- * used to connect to your home automation software of choice.
- * 
- * You can add and remove fingerprints using MQTT topics by
- * sending the ID through the topic.
- * 
- * Simply configure the Wifi and MQTT parameters below to get
- * started!
- *
- */
+   https://everythingsmarthome.co.uk
+
+   This is an MQTT connected fingerprint sensor which can
+   used to connect to your home automation software of choice.
+
+   You can add and remove fingerprints using MQTT topics by
+   sending the ID through the topic.
+
+   Simply configure the Wifi and MQTT parameters below to get
+   started!
+
+*/
 
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
@@ -19,12 +19,12 @@
 
 // Wifi Settings
 #define SSID                          "VodafoneGerbera"
-#define PASSWORD                      "VC84DT88"
+#define PASSWORD                      "XXXXXX"
 
 // MQTT Settings
-#define HOSTNAME                      "fingerprint-sensor"
+#define HOSTNAME                      "fingerprint-main"
 #define MQTT_SERVER                   "192.168.1.12"
-#define GATE_ID                       "portone"
+#define GATE_ID                       "main"
 #define STATE_TOPIC                   "/fingerprint/mode/status"
 #define MODE_LEARNING                 "/fingerprint/mode/learning"
 #define MODE_READING                  "/fingerprint/mode/reading"
@@ -33,7 +33,8 @@
 #define mqtt_username                 "finger"
 #define mqtt_password                 "finger"
 
-#define MQTT_INTERVAL 5000            //MQTT rate limiting when no finger present, in ms
+#define MQTT_MAX_PACKET_SIZE 256
+#define MQTT_INTERVAL 500             //MQTT rate limiting when no finger present, in ms
 
 #define SENSOR_TX 12                  //GPIO Pin for RX
 #define SENSOR_RX 14                  //GPIO Pin for TX
@@ -51,37 +52,34 @@ String sensorMode = "reading";        //Current sensor mode
 String lastSensorMode = "";
 String lastSensorState = "";
 String currentState = "";
-unsigned long lastMQTTmsg = 0;	      //Stores millis since last MQTT message
+unsigned long lastMQTTmsg = 0;        //Stores millis since last MQTT message
 
 //Declare JSON variables
-DynamicJsonDocument mqttMessage(100);
-char mqttBuffer[100];
+DynamicJsonDocument mqttMessage(MQTT_MAX_PACKET_SIZE);
+char mqttBuffer[MQTT_MAX_PACKET_SIZE];
 
-void setup()
-{
+void setup() {
 
   Serial.begin(57600);
-  
+
   while (!Serial);
-  
+
   delay(100);
   Serial.println("\n\nWelcome to the MQTT Fingerprint Sensor program!");
 
   // set the data rate for the sensor serial port
   finger.begin(57600);
-  
+
   delay(5);
-  
+
   if (finger.verifyPassword()) {
-  
+
     Serial.println("Found fingerprint sensor!");
-  
+
   } else {
-    
+
     Serial.println("Did not find fingerprint sensor :(");
-    
-    finger.led_control(1,100,2,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255)
-    
+
     while (1) {
       delay(1);
     }
@@ -92,11 +90,11 @@ void setup()
   Serial.print("Connecting...");
 
   while (WiFi.status() != WL_CONNECTED) {       // Wait till Wifi connected
-  
+
     delay(500);
     Serial.print(".");
   }
-  
+
   Serial.println();
 
   Serial.print("Connected, IP address: ");
@@ -112,91 +110,95 @@ void setup()
   mqttMessage["state"] = "Not matched";
   mqttMessage["id"] = 0;
   mqttMessage["confidence"] = 0;
+
+  ledReady();
 }
 
 void loop() {
 
   if (!client.connected()) {
-  
+
     reconnect();                //Just incase we get disconnected from MQTT server
   }
-  
+
   if (sensorMode == "reading") {
-    
+
+    mqttMessage["mode"] = "reading";
+
     uint8_t result = getFingerprintID();
-    
+
     if (result == FINGERPRINT_OK) {
-    
+
       mqttMessage["match"] = true;
       mqttMessage["id"] = lastID;
       mqttMessage["state"] = "Matched";
       mqttMessage["confidence"] = lastConfidenceScore;
       publish();
-      
+
       lastMQTTmsg = millis();
       delay(500);
-    
+
     } else if (result == FINGERPRINT_NOTFOUND) {
-    
+
       mqttMessage["match"] = false;
       mqttMessage["id"] = id;
       mqttMessage["state"] = "Not matched";
       mqttMessage["confidence"] = 0;
       publish();
-      
+
       lastMQTTmsg = millis();
       delay(100);
-    
+
     } else if (result == FINGERPRINT_NOFINGER) {
-	  
-	    if ((millis() - lastMQTTmsg) > MQTT_INTERVAL){
-		  
-		    mqttMessage["match"] = false;
-		    mqttMessage["id"] = id;
-		    mqttMessage["state"] = "Waiting";
+
+      if ((millis() - lastMQTTmsg) > MQTT_INTERVAL) {
+
+        mqttMessage["match"] = false;
+        mqttMessage["id"] = id;
+        mqttMessage["state"] = "Waiting";
         mqttMessage["confidence"] = 0;
-		    publish();
-        
+        publish();
+
         lastMQTTmsg = millis();
-	    }
-	    
-	    if ((millis() - lastMQTTmsg) < 0){
-		  
-		    lastMQTTmsg = millis();	    //Just in case millis ever rolls over
-	    }
+      }
+
+      if ((millis() - lastMQTTmsg) < 0) {
+
+        lastMQTTmsg = millis();     //Just in case millis ever rolls over
+      }
     }
   }
-  
+
   client.loop();
   delay(100);            //don't need to run this at full speed.
 }
 
 uint8_t getFingerprintID() {
-  
+
   uint8_t p = finger.getImage();
-  
+
   switch (p) {
-  
+
     case FINGERPRINT_OK:
-    
+
       Serial.println("Image taken");
       break;
 
     case FINGERPRINT_NOFINGER:
-      
+
       //Serial.println("No finger detected");
       return p;
-    
+
     case FINGERPRINT_PACKETRECIEVEERR:
-    
+
       Serial.println("Communication error");
       return p;
-    
+
     case FINGERPRINT_IMAGEFAIL:
-    
+
       Serial.println("Imaging error");
       return p;
-    
+
     default:
       Serial.println("Unknown error");
       return p;
@@ -205,118 +207,113 @@ uint8_t getFingerprintID() {
   // OK success!
 
   p = finger.image2Tz();
-  
+
   switch (p) {
-  
+
     case FINGERPRINT_OK:
-    
+
       Serial.println("Image converted");
       break;
-    
+
     case FINGERPRINT_IMAGEMESS:
-    
+
       Serial.println("Image too messy");
       return p;
-    
+
     case FINGERPRINT_PACKETRECIEVEERR:
-    
+
       Serial.println("Communication error");
       return p;
-    
+
     case FINGERPRINT_FEATUREFAIL:
-    
+
       Serial.println("Could not find fingerprint features");
       return p;
-    
+
     case FINGERPRINT_INVALIDIMAGE:
-    
+
       Serial.println("Could not find fingerprint features");
       return p;
-    
+
     default:
-    
+
       Serial.println("Unknown error");
       return p;
   }
 
   // OK converted!
   p = finger.fingerSearch();
-  
+
   if (p == FINGERPRINT_OK) {
-  
+
     Serial.println("Found a print match!");
-    
+
     lastID = finger.fingerID;
     lastConfidenceScore = finger.confidence;
-    finger.led_control(1,200,2,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
+    ledMatch();
     return p;
-  
+
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-  
+
     Serial.println("Communication error");
     return p;
-  
+
   } else if (p == FINGERPRINT_NOTFOUND) {
-  
+
     Serial.println("Did not find a match");
-    finger.led_control(2,30,1,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
+    ledWrong();
     return p;
-  
+
   } else {
-    
+
     Serial.println("Unknown error");
     return p;
   }
-
-  // found a match!
-  Serial.print("Found ID #"); Serial.print(finger.fingerID);
-  Serial.print(" with confidence of "); Serial.println(finger.confidence);
-
-  return finger.fingerID;
 }
 
 uint8_t getFingerprintEnroll() {
-  
+
   int p = -1;
 
   sensorMode = "learning";
-  mqttMessage["mode"] = "learning";      
+  mqttMessage["mode"] = "learning";
   mqttMessage["id"] = id;
   mqttMessage["state"] = "Place finger...";
+  mqttMessage["confidence"] = 0;
   publish();
-  
+
   Serial.print("Waiting for valid finger to enroll as #"); Serial.println(id);
 
   while (p != FINGERPRINT_OK) {
-  
+
     p = finger.getImage();
-    
+
     switch (p) {
-    
+
       case FINGERPRINT_OK:
-      
+
         Serial.println("Image taken");
-        finger.led_control(1,100,2,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
+        ledFinger();
         break;
-      
+
       case FINGERPRINT_NOFINGER:
-      
+
         Serial.print(".");
-        finger.led_control(1,15,3,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
+        ledWait();
         break;
-      
+
       case FINGERPRINT_PACKETRECIEVEERR:
-      
+
         Serial.println("Communication error");
         break;
-      
+
       case FINGERPRINT_IMAGEFAIL:
-      
+
         Serial.println("Imaging error");
         break;
-      
+
       default:
-      
+
         Serial.println("Unknown error");
         break;
     }
@@ -325,96 +322,99 @@ uint8_t getFingerprintEnroll() {
   // OK success!
 
   p = finger.image2Tz(1);
-  
+
   switch (p) {
-  
+
     case FINGERPRINT_OK:
+
       Serial.println("Image converted");
       break;
-    
+
     case FINGERPRINT_IMAGEMESS:
-    
+
       Serial.println("Image too messy");
       return p;
-    
+
     case FINGERPRINT_PACKETRECIEVEERR:
-    
+
       Serial.println("Communication error");
       return p;
-    
+
     case FINGERPRINT_FEATUREFAIL:
-    
+
       Serial.println("Could not find fingerprint features");
       return p;
-    
+
     case FINGERPRINT_INVALIDIMAGE:
-    
+
       Serial.println("Could not find fingerprint features");
       return p;
-    
+
     default:
       Serial.println("Unknown error");
       return p;
   }
 
   sensorMode = "learning";
-  mqttMessage["mode"] = "learning";      
+  mqttMessage["mode"] = "learning";
   mqttMessage["id"] = id;
   mqttMessage["state"] = "Remove finger...";
+  mqttMessage["confidence"] = 0;
   publish();
-  
+
   Serial.println("Remove finger");
   delay(2000);
-  
+
   p = 0;
-  
+
   while (p != FINGERPRINT_NOFINGER) {
-    
+
     p = finger.getImage();
   }
-  
+
   Serial.print("ID "); Serial.println(id);
-  
+
   p = -1;
 
   sensorMode = "learning";
-  mqttMessage["mode"] = "learning";      
+  mqttMessage["mode"] = "learning";
   mqttMessage["id"] = id;
-  mqttMessage["state"] = "Place same finger...";
+  mqttMessage["state"] = "Place same finger again...";
+  mqttMessage["confidence"] = 0;
   publish();
-  
+
   Serial.println("Place same finger again");
-  
+
   while (p != FINGERPRINT_OK) {
-  
+
     p = finger.getImage();
-    
+
     switch (p) {
-    
+
       case FINGERPRINT_OK:
-      
+
         Serial.println("Image taken");
-        finger.led_control(1,150,2,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
+        ledFinger();
         break;
-      
+
       case FINGERPRINT_NOFINGER:
-      
+
         Serial.print(".");
-        finger.led_control(1,15,3,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
+        ledWait();
         break;
-      
+
       case FINGERPRINT_PACKETRECIEVEERR:
-      
+
         Serial.println("Communication error");
         break;
-      
+
       case FINGERPRINT_IMAGEFAIL:
-      
+
         Serial.println("Imaging error");
         break;
-      
+
       default:
-      
+
         Serial.println("Unknown error");
         break;
     }
@@ -423,35 +423,35 @@ uint8_t getFingerprintEnroll() {
   // OK success!
 
   p = finger.image2Tz(2);
-  
+
   switch (p) {
 
     case FINGERPRINT_OK:
-    
+
       Serial.println("Image converted");
       break;
     case FINGERPRINT_IMAGEMESS:
 
       Serial.println("Image too messy");
       return p;
-    
+
     case FINGERPRINT_PACKETRECIEVEERR:
-    
+
       Serial.println("Communication error");
       return p;
-    
+
     case FINGERPRINT_FEATUREFAIL:
-    
+
       Serial.println("Could not find fingerprint features");
       return p;
-    
+
     case FINGERPRINT_INVALIDIMAGE:
-    
+
       Serial.println("Could not find fingerprint features");
       return p;
-    
+
     default:
-    
+
       Serial.println("Unknown error");
       return p;
   }
@@ -460,59 +460,60 @@ uint8_t getFingerprintEnroll() {
   Serial.print("Creating model for #");  Serial.println(id);
 
   p = finger.createModel();
-  
+
   if (p == FINGERPRINT_OK) {
-  
+
     Serial.println("Prints matched!");
-  
+
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-  
+
     Serial.println("Communication error");
     return p;
-  
+
   } else if (p == FINGERPRINT_ENROLLMISMATCH) {
-  
+
     Serial.println("Fingerprints did not match");
     return p;
-  
+
   } else {
-  
+
     Serial.println("Unknown error");
     return p;
   }
 
   Serial.print("ID "); Serial.println(id);
-  
+
   p = finger.storeModel(id);
-  
-  if(p == FINGERPRINT_OK) {
+
+  if (p == FINGERPRINT_OK) {
 
     sensorMode = "learning";
     mqttMessage["mode"] = "learning";
     mqttMessage["id"] = id;
     mqttMessage["state"] = "Success, stored";
+    mqttMessage["confidence"] = 0;
     publish();
-    
+
     Serial.println("Stored!");
     return true;
-    
+
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-    
+
     Serial.println("Communication error");
     return p;
-  
+
   } else if (p == FINGERPRINT_BADLOCATION) {
-  
+
     Serial.println("Could not store in that location");
     return p;
-  
+
   } else if (p == FINGERPRINT_FLASHERR) {
-  
+
     Serial.println("Error writing to flash");
     return p;
-  
+
   } else {
-  
+
     Serial.println("Unknown error");
     return p;
   }
@@ -525,33 +526,35 @@ uint8_t deleteFingerprint() {
   p = finger.deleteModel(id);
 
   if (p == FINGERPRINT_OK) {
-  
+
     sensorMode = "deleting";
-    mqttMessage["mode"] = "deleting"; 
+    mqttMessage["mode"] = "deleting";
     mqttMessage["id"] = id;
     mqttMessage["state"] = "Deleted";
+    mqttMessage["confidence"] = 0;
     publish();
+
+    ledWrong();
     
-    finger.led_control(1,150,1,1); // code(1-6),speed(1-255),color(1-R/2-B/3_P),time(1-255
     return true;
-  
+
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-  
+
     Serial.println("Communication error");
     return p;
-  
+
   } else if (p == FINGERPRINT_BADLOCATION) {
-  
+
     Serial.println("Could not delete in that location");
     return p;
-  
+
   } else if (p == FINGERPRINT_FLASHERR) {
-  
+
     Serial.println("Error writing to flash");
     return p;
-  
+
   } else {
-  
+
     Serial.print("Unknown error: 0x"); Serial.println(p, HEX);
     return p;
   }
@@ -560,20 +563,20 @@ uint8_t deleteFingerprint() {
 void reconnect() {
 
   while (!client.connected()) {       // Loop until connected to MQTT server
-  
+
     Serial.print("Attempting MQTT connection...");
-    
+
     if (client.connect(HOSTNAME, mqtt_username, mqtt_password, AVAILABILITY_TOPIC, 1, true, "offline")) {       //Connect to MQTT server
-    
+
       Serial.println("connected");
-      
+
       client.publish(AVAILABILITY_TOPIC, "online");         // Once connected, publish online to the availability topic
       client.subscribe(MODE_LEARNING);       //Subscribe to Learning Mode Topic
       client.subscribe(MODE_READING);
       client.subscribe(MODE_DELETE);
-   
+
     } else {
-    
+
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
@@ -583,93 +586,125 @@ void reconnect() {
 }
 
 void publish() {
- 
+
   const char* state = mqttMessage["state"];
   currentState = String(state);
-  
-  if((sensorMode != lastSensorMode) || (currentState != lastSensorState)) {
 
-     Serial.println("Publishing state... mode: " + sensorMode + " state: " + currentState);
-     
-     lastSensorMode = sensorMode;
-     lastSensorState = currentState;
+  if ((sensorMode != lastSensorMode) || (currentState != lastSensorState)) {
 
-     size_t mqttMessageSize = serializeJson(mqttMessage, mqttBuffer);
-     client.publish(STATE_TOPIC, mqttBuffer, mqttMessageSize);
+    Serial.println("Publishing state... mode: " + sensorMode + " state: " + currentState);
+
+    lastSensorMode = sensorMode;
+    lastSensorState = currentState;
+
+    size_t mqttMessageSize = serializeJson(mqttMessage, mqttBuffer);
+    client.publish(STATE_TOPIC, mqttBuffer, mqttMessageSize);
+    Serial.println(mqttBuffer);
   }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {                    //The MQTT callback which listens for incoming messages on the subscribed topics
-  
+
   if (strcmp(topic, MODE_LEARNING) == 0) {
-  
+
     char charArray[3];
-    
+
     for (int i = 0; i < length; i++) {
-      
+
       charArray[i] = payload[i];
     }
-    
+
     id = atoi(charArray);
-    
+
     if (id > 0 && id < 128) {
-    
+
       Serial.println("Entering Learning mode");
-      
+
       sensorMode = "learning";
-      mqttMessage["mode"] = "learning";            
+      mqttMessage["mode"] = "learning";
       mqttMessage["id"] = id;
+      mqttMessage["confidence"] = 0;
       publish();
-      
+
       while (!getFingerprintEnroll());
-       
+
       Serial.println("Exiting Learning mode");
-      
+
       sensorMode = "reading";
-      mqttMessage["mode"] = "reading";            
+      mqttMessage["mode"] = "reading";
 
       id = 0;
-   
+
     } else {
-    
+
       Serial.println("Invalid Id");
     }
-    
+
     Serial.println();
   }
 
   if (strcmp(topic, MODE_DELETE) == 0) {
-    
+
     char charArray[3];
-    
+
     for (int i = 0; i < length; i++) {
-      
+
       charArray[i] = payload[i];
     }
-    
+
     id = atoi(charArray);
-    
+
     if (id > 0 && id < 128) {
 
       sensorMode = "deleting";
-      mqttMessage["mode"] = "deleting";      
+      mqttMessage["mode"] = "deleting";
       mqttMessage["id"] = id;
+      mqttMessage["confidence"] = 0;
       publish();
-      
+
       Serial.println("Entering delete mode");
-      
+
       while (!deleteFingerprint());
-      
+
       Serial.println("Exiting delete mode");
-      
+
       delay(2000); //Make the mqttMessage readable in HA
-      
+
       sensorMode = "reading";
-      mqttMessage["mode"] = "reading";      
+      mqttMessage["mode"] = "reading";
 
       id = 0;
     }
-    
+
     Serial.println();
   }
+}
+
+// mode(1-6),delay(1-255),color(1-Red/2-Blue/3-Purple),times(1-255)
+
+void ledFinger() {
+
+  finger.led_control(1, 100, 2, 1);
+}
+
+void ledMatch() {
+
+  finger.led_control(1, 150, 2, 1);
+}
+
+void ledWrong() {
+
+  finger.led_control(1, 30, 1, 1);
+  delay(300);
+  finger.led_control(1, 30, 1, 1);
+}
+
+void ledReady() {
+
+  finger.led_control(2, 150, 2, 1);
+}
+
+void ledWait() {
+
+  finger.led_control(1, 15, 3, 1);
 }
