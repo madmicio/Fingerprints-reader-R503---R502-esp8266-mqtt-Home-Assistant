@@ -31,14 +31,14 @@ char MQTT_PASSWORD[]  = SECRET_MQTT_PASSWORD;
 #define HOSTNAME                      "fingerprint-main"
 #define MQTT_SERVER                   "192.168.1.12"
 #define GATE_ID                       "main"
-#define STATE_TOPIC                   "/fingerprint/mode/status"
-#define MODE_LEARNING                 "/fingerprint/mode/learning"
-#define MODE_READING                  "/fingerprint/mode/reading"
-#define MODE_DELETE                   "/fingerprint/mode/delete"
+#define STATE_TOPIC                   "/fingerprint/status"
+#define MODE_LEARNING                 "/fingerprint/learn"
+#define MODE_READING                  "/fingerprint/read"
+#define MODE_DELETE                   "/fingerprint/delete"
 #define AVAILABILITY_TOPIC            "/fingerprint/available"
 
 #define MQTT_MAX_PACKET_SIZE 256
-#define MQTT_INTERVAL 500             //MQTT rate limiting when no finger present, in ms
+#define MQTT_INTERVAL 500             
 
 #define SENSOR_TX 12                  //GPIO Pin for RX
 #define SENSOR_RX 14                  //GPIO Pin for TX
