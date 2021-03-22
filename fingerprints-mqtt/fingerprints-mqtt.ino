@@ -1,36 +1,25 @@
-/*************************************
-   https://everythingsmarthome.co.uk
-
-   This is an MQTT connected fingerprint sensor which can
-   used to connect to your home automation software of choice.
-
-   You can add and remove fingerprints using MQTT topics by
-   sending the Id through the topic.
-
-   Simply configure the Wifi and MQTT parameters below to get
-   started!
-
-*/
-
+#include <FS.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
+
 #include <ESP8266WiFi.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
 #include <Adafruit_Fingerprint.h>
 #include "arduino_secrets.h"
 
-// NB: put secret values in a file named arduino_secrets.h in the same folder
-// that file is NOT shared via git and must be created locally
-// Eg. #define SECRET_WIFI_SSID "YourWiFiName"
+char mqttHost[32]       = "homeassistant.local";
+char mqttPort[6]        = "1883";
+char mqttUsername[16]   = "mqtt";
+char mqttPassword[16]   = "mqtt";
+char gateId[32]         = "main";
 
-char WIFI_SSID[]      = SECRET_WIFI_SSID;
-char WIFI_PASSWORD[]  = SECRET_WIFI_PASSWORD;
-char MQTT_USERNAME[]  = SECRET_MQTT_USERNAME;
-char MQTT_PASSWORD[]  = SECRET_MQTT_PASSWORD;
 
-// MQTT Settings
-#define HOSTNAME                      "fingerprint-main"
-#define MQTT_SERVER                   "192.168.1.12"
-#define GATE_ID                       "main"
+#define SSID_FOR_SETUP                "Fingerprint-Setup"
+#define HOSTNAME                      "fingerprint-mqtt"
+
 #define STATE_TOPIC                   "/fingerprint/status"
 #define MODE_LEARNING                 "/fingerprint/learn"
 #define MODE_READING                  "/fingerprint/read"
@@ -40,56 +29,176 @@ char MQTT_PASSWORD[]  = SECRET_MQTT_PASSWORD;
 #define MQTT_MAX_PACKET_SIZE 256
 #define MQTT_INTERVAL 500             
 
-#define SENSOR_TX 12                  //GPIO Pin for RX
-#define SENSOR_RX 14                  //GPIO Pin for TX
+// Sensor is connected to: green D5, yellow D6, 3v3
+#define SENSOR_TX 12
+#define SENSOR_RX 14
 
 SoftwareSerial mySerial(SENSOR_TX, SENSOR_RX);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
-WiFiClient wifiClient;                // Initiate WiFi library
-PubSubClient client(wifiClient);      // Initiate PubSubClient library
+WiFiClient wifiClient;
+PubSubClient client(wifiClient);
 
-uint8_t id = 0;                       //Stores the current fingerprint Id
-uint8_t lastId = 0;                   //Stores the last matched Id
-uint8_t lastConfidenceScore = 0;      //Stores the last matched confidence score
-String sensorMode = "reading";        //Current sensor mode
+uint8_t id = 0;
+uint8_t lastId = 0;
+
+uint8_t lastConfidenceScore = 0;
+String sensorMode = "reading";
 String lastSensorMode = "";
+String sensorState = "";
 String lastSensorState = "";
-String currentState = "";
-unsigned long lastMQTTmsg = 0;        //Stores millis since last MQTT message
 
-//Declare JSON variables
+bool shouldSaveConfig = false;
+unsigned long lastMQTTmsg = 0;
+
+
 DynamicJsonDocument mqttMessage(MQTT_MAX_PACKET_SIZE);
 char mqttBuffer[MQTT_MAX_PACKET_SIZE];
 
 void setup() {
 
+  setupDevices();
+  readConfig();
+  setupWifi();
+  saveConfig();
+  setupMqtt();
+ 
+  ledReady();
+}
+
+void saveConfig() {
+
+  if(!shouldSaveConfig) {
+    
+    return;
+  }
+  
+}
+
+void readConfig() {
+
+  if (SPIFFS.begin()) {
+    
+    Serial.println("Mounted file system");
+    
+    if (SPIFFS.exists("/config.json")) {
+      
+      Serial.println("Reading config file");
+      
+      File configFile = SPIFFS.open("/config.json", "r");
+      
+      if (configFile) {
+        
+        Serial.println("Opened config file");
+
+        StaticJsonDocument<512> doc;
+        DeserializationError error = deserializeJson(doc, configFile);
+        
+        if (error) {
+        
+          Serial.println(F("Failed to read file, using default configuration"));
+
+        } else {
+
+          Serial.println("Loaded config:");
+          serializeJson(doc, Serial);
+
+          strcpy(mqttHost,      doc["mqttHost"]);
+          strcpy(mqttPort,      doc["mqttPort"]);
+          strcpy(mqttUsername,  doc["mqttUsername"]);
+          strcpy(mqttPassword,  doc["mqttPassword"]);
+          strcpy(gateId,        doc["gateId"]);
+        }
+      }
+      
+      configFile.close();
+    }
+    
+  } else {
+    
+    Serial.println("Failed to mount FS");
+  }
+}
+
+
+void saveConfigCallback () {
+
+  Serial.println("Setup complete.");
+  shouldSaveConfig = true;
+}
+
+void setupMqtt() {
+
+  client.setServer(mqttHost, atoi(mqttPort));
+  client.setCallback(callback);
+
+  mqttMessage["gate"]       = gateId;
+  mqttMessage["mode"]       = "reading";
+  mqttMessage["match"]      = false;
+  mqttMessage["state"]      = "Not matched";
+  mqttMessage["id"]         = 0;
+  mqttMessage["user"]       = 0;
+  mqttMessage["confidence"] = 0;
+
+  while (!client.connected()) {
+
+    Serial.print("Connecting to MQTT...");
+
+    if (client.connect(HOSTNAME, mqttUsername, mqttPassword, AVAILABILITY_TOPIC, 1, true, "offline")) {
+      
+      Serial.println("connected");
+
+      client.publish(AVAILABILITY_TOPIC, "online");
+      client.subscribe(MODE_LEARNING);
+      client.subscribe(MODE_READING);
+      client.subscribe(MODE_DELETE);
+
+    } else {
+
+      Serial.print("failed, rc: "); Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      
+      delay(5000);
+    }
+  }
+}
+
+void setupDevices() {
+  
   Serial.begin(57600);
+  
+  while (!Serial); delay(100);
+  
+  Serial.println("\n\nWelcome to Fingerprint-MQTT sensor");
 
-  while (!Serial);
+  finger.begin(57600); delay(5);
 
-  delay(100);
-  Serial.println("\n\nWelcome to the MQTT Fingerprint Sensor program!");
-
-  // set the data rate for the sensor serial port
-  finger.begin(57600);
-
-  delay(5);
-
+  Serial.print("Looking for sensor...");
+  
   if (finger.verifyPassword()) {
 
-    Serial.println("Found fingerprint sensor!");
+    Serial.println("ok");
 
   } else {
 
-    Serial.println("Did not find fingerprint sensor :(");
+    Serial.println("ko.\nSensor not found: check serial connection on green/yellow cables.");
 
-    while (1) {
-      delay(1);
-    }
+    while (1) { delay(10);}
   }
+}
 
-  WiFi.mode(WIFI_STA);
+void setupWifi() {
+
+  Serial.println("Configuration check...");
+  
+  WiFiManager wifiManager;
+  wifiManager.resetSettings();
+  wifiManager.autoConnect(SSID_FOR_SETUP);
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+
+ 
+/*
+ WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting...");
 
@@ -103,29 +212,13 @@ void setup() {
 
   Serial.print("Connected, IP address: ");
   Serial.println(WiFi.localIP());                     // Print IP address
-
-  client.setServer(MQTT_SERVER, 1883);                // Set MQTT server and port number
-  client.setCallback(callback);
-
-  // Init mqtt payload
-  mqttMessage["gate"] = GATE_ID;
-  mqttMessage["mode"] = "reading";
-  mqttMessage["match"] = false;
-  mqttMessage["state"] = "Not matched";
-  mqttMessage["id"] = 0;
-  mqttMessage["user"] = 0;
-  mqttMessage["confidence"] = 0;
-
-  ledReady();
+ */
 }
 
 void loop() {
 
-  if (!client.connected()) {
-
-    reconnect();                //Just incase we get disconnected from MQTT server
-  }
-
+  setupMqtt();
+  
   if (sensorMode == "reading") {
 
     mqttMessage["mode"] = "reading";
@@ -567,46 +660,21 @@ uint8_t deleteFingerprint() {
   }
 }
 
-void reconnect() {
-
-  while (!client.connected()) {
-
-    Serial.print("Attempting MQTT connection...");
-
-    if (client.connect(HOSTNAME, MQTT_USERNAME, MQTT_PASSWORD, AVAILABILITY_TOPIC, 1, true, "offline")) {
-      
-      Serial.println("connected");
-
-      client.publish(AVAILABILITY_TOPIC, "online");
-      client.subscribe(MODE_LEARNING);
-      client.subscribe(MODE_READING);
-      client.subscribe(MODE_DELETE);
-
-    } else {
-
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      
-      delay(5000);
-    }
-  }
-}
 
 void publish() {
 
   const char* state = mqttMessage["state"];
-  currentState = String(state);
+  sensorState = String(state);
 
   int id = mqttMessage["id"];
   mqttMessage["user"] = id/10;
   
-  if ((sensorMode != lastSensorMode) || (currentState != lastSensorState)) {
+  if ((sensorMode != lastSensorMode) || (sensorState != lastSensorState)) {
 
-    Serial.println("Publishing state... mode: " + sensorMode + " state: " + currentState);
+    Serial.println("Publishing state... mode: " + sensorMode + " state: " + sensorState);
 
     lastSensorMode = sensorMode;
-    lastSensorState = currentState;
+    lastSensorState = sensorState;
 
     size_t mqttMessageSize = serializeJson(mqttMessage, mqttBuffer);
     client.publish(STATE_TOPIC, mqttBuffer, mqttMessageSize);
