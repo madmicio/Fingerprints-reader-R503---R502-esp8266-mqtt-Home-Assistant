@@ -148,7 +148,7 @@ void loop() {
       mqttMessage["match"] = false;
       mqttMessage["id"] = id;
       mqttMessage["state"] = "Not matched";
-      mqttMessage["confidence"] = 0;
+      mqttMessage["confidence"] = lastConfidenceScore;
       publish();
 
       lastMQTTmsg = millis();
@@ -266,6 +266,7 @@ uint8_t getFingerprintId() {
   } else if (p == FINGERPRINT_NOTFOUND) {
 
     Serial.println("Did not find a match");
+    lastConfidenceScore = finger.confidence;
     ledWrong();
     return p;
 
