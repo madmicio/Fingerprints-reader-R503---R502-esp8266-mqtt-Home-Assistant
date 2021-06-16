@@ -1,0 +1,31 @@
+  - title: ''
+    #background: 'radial-gradient(#286a84, #212527)'
+    # background: 'linear-gradient(to right, #ffffff 75%, #f6f5fa 75% 100%)'
+    # s
+    background: var(--simple-background)
+    path: fingerprint2
+    icon: 'mdi:fingerprint'
+    badges: []
+    cards:
+      - type: markdown
+        content: >
+          ## Fingerprits
+      - type: markdown
+        content: >
+          **Recorded Fingerprits**
+          ---
+
+          *id:* __{{states('input_number.fingerprint_learning_id') | round}}__ __{{state_attr('saver.saver', 'variables')[states('input_number.fingerprint_learning_id') | round | string ] }}__
+      - type: entities
+        #title: Fingerprints
+        show_header_toggle: false
+        entities:
+          - entity: sensor.fingerprint_id
+          - entity: sensor.fingerprint_person
+          - entity: sensor.fingerprint_mode
+          - type: divider
+          - entity: input_number.fingerprint_learning_id
+          - entity: input_text.id_name
+          - entity: script.fingerprint_learning_mode
+          - entity: script.fingerprint_delete_print
+          - entity: script.fingerprint_rename
